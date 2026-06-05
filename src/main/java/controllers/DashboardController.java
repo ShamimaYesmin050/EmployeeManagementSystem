@@ -1,4 +1,5 @@
 package controllers;
+import models.Attendance;
 import javafx.scene.control.ButtonType;
 import java.util.Optional;
 import javafx.scene.control.Alert;
@@ -22,10 +23,15 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import models.Employee;
+import javafx.scene.control.ComboBox;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 public class DashboardController {
 
     private ObservableList<Employee> employees =
+            FXCollections.observableArrayList();
+    private ObservableList<Attendance> attendanceList =
             FXCollections.observableArrayList();
 
     @FXML
@@ -58,30 +64,6 @@ public class DashboardController {
                 "01933333333"
         ));
 
-        employees.add(new Employee(
-                4,
-                "Nishat",
-                "IT",
-                "nishat@gmail.com",
-                "01711111112"
-        ));
-
-        employees.add(new Employee(
-                5,
-                "Medha",
-                "English",
-                "medha@gmail.com",
-                "01822222221"
-        ));
-
-        employees.add(new Employee(
-                6,
-                "Mouno",
-                "EEE",
-                "mouno@gmail.com",
-                "01933333331"
-        ));
-
         System.out.println(
                 "Employees Loaded: "
                         + employees.size()
@@ -90,38 +72,44 @@ public class DashboardController {
         showDashboard(null);
     }
 
-    @FXML
-    private void showDashboard(ActionEvent event) {
+   @FXML
+private void showDashboard(ActionEvent event) {
 
-        VBox root = new VBox(20);
+    VBox root = new VBox(20);
 
-        HBox cards = new HBox(20);
+    HBox cards = new HBox(20);
 
-        VBox card1 = createCard(
-                "Total Employees",
-                String.valueOf(employees.size())
-        );
+    VBox card1 = createCard(
+            "Total Employees",
+            String.valueOf(employees.size())
+    );
 
-        VBox card2 = createCard(
-                "Present Today",
-                "20"
-        );
+    VBox card2 = createCard(
+            "Present Today",
+            String.valueOf(getPresentCount())
+    );
 
-        VBox card3 = createCard(
-                "Absent Today",
-                "5"
-        );
+    VBox card3 = createCard(
+            "Late Today",
+            String.valueOf(getLateCount())
+    );
 
-        cards.getChildren().addAll(
-                card1,
-                card2,
-                card3
-        );
+    VBox card4 = createCard(
+            "Absent Today",
+            String.valueOf(getAbsentCount())
+    );
 
-        root.getChildren().add(cards);
+    cards.getChildren().addAll(
+            card1,
+            card2,
+            card3,
+            card4
+    );
 
-        contentArea.getChildren().setAll(root);
-    }
+    root.getChildren().add(cards);
+
+    contentArea.getChildren().setAll(root);
+}
 
     @FXML
     private void showEmployees(ActionEvent event) {
@@ -531,80 +519,367 @@ if (id <= 0) {
 
         contentArea.getChildren().setAll(root);
     }
-
     @FXML
-    private void showAttendance(ActionEvent event) {
+private void showAttendance(ActionEvent event) {
 
-        VBox root = new VBox(15);
+    VBox root = new VBox(15);
 
-        Button checkIn =
-                new Button("Check In");
+    TextField searchField = new TextField();
+    searchField.setPromptText("Search Attendance");
 
-        Button checkOut =
-                new Button("Check Out");
+    ComboBox<Employee> employeeCombo =
+            new ComboBox<>();
 
-        Button markAttendance =
-                new Button("Mark Attendance");
+    employeeCombo.setItems(employees);
 
-        HBox buttons = new HBox(
-                10,
-                checkIn,
-                checkOut,
-                markAttendance
+    TableView<Attendance> attendanceTable =
+            new TableView<>();
+
+    attendanceTable.setPrefHeight(350);
+
+    attendanceTable.setColumnResizePolicy(
+            TableView.CONSTRAINED_RESIZE_POLICY
+    );
+
+    TableColumn<Attendance,Integer> idCol =
+            new TableColumn<>("ID");
+
+    idCol.setCellValueFactory(
+            new PropertyValueFactory<>("employeeId")
+    );
+
+    TableColumn<Attendance,String> nameCol =
+            new TableColumn<>("Employee Name");
+
+    nameCol.setCellValueFactory(
+            new PropertyValueFactory<>("employeeName")
+    );
+
+TableColumn<Attendance, LocalDate> dateCol =
+        new TableColumn<>("Date");
+
+dateCol.setCellValueFactory(
+        new PropertyValueFactory<>("date")
+);
+
+TableColumn<Attendance, LocalTime> checkInCol =
+        new TableColumn<>("Check In");
+
+checkInCol.setCellValueFactory(
+        new PropertyValueFactory<>("checkIn")
+);
+
+TableColumn<Attendance, LocalTime> checkOutCol =
+        new TableColumn<>("Check Out");
+
+checkOutCol.setCellValueFactory(
+        new PropertyValueFactory<>("checkOut")
+);
+
+    TableColumn<Attendance,String> statusCol =
+            new TableColumn<>("Status");
+
+    statusCol.setCellValueFactory(
+            new PropertyValueFactory<>("status")
+    );
+
+    attendanceTable.getColumns().addAll(
+            idCol,
+            nameCol,
+            dateCol,
+            checkInCol,
+            checkOutCol,
+            statusCol
+    );
+
+    FilteredList<Attendance> filtered =
+            new FilteredList<>(
+                    attendanceList,
+                    p -> true
+            );
+
+    searchField.textProperty()
+            .addListener(
+                    (obs, oldVal, newVal) -> {
+
+                        filtered.setPredicate(
+                                attendance -> {
+
+                                    if(newVal == null
+                                            || newVal.isEmpty()) {
+
+                                        return true;
+                                    }
+
+                                    String keyword =
+                                            newVal.toLowerCase();
+
+                                    return attendance
+                                            .getEmployeeName()
+                                            .toLowerCase()
+                                            .contains(keyword);
+                                });
+                    });
+    attendanceTable.setItems(filtered);
+
+    Button checkInBtn =
+            new Button("Check In");
+
+    Button checkOutBtn =
+            new Button("Check Out");
+
+    Button absentBtn =
+            new Button("Mark Absent");
+
+    checkInBtn.setOnAction(e -> {
+        Employee emp =
+                employeeCombo.getValue();
+
+        if(emp == null) {
+
+            Alert alert =
+                    new Alert(Alert.AlertType.WARNING);
+
+            alert.setTitle("Select Employee");
+            alert.setHeaderText(null);
+            alert.setContentText(
+                    "Please select an employee."
+            );
+
+            alert.showAndWait();
+
+            return;
+        }
+        boolean alreadyMarked =
+        attendanceList.stream()
+        .anyMatch(a ->
+                a.getEmployeeId() == emp.getId()
+                &&
+                a.getDate().equals(LocalDate.now())
         );
 
-        TableView<String> table =
-                new TableView<>();
+if(alreadyMarked) {
 
-        TableColumn<String, String> idCol =
-                new TableColumn<>("ID");
+    Alert alert = new Alert(Alert.AlertType.WARNING);
+    alert.setTitle("Attendance Exists");
+    alert.setHeaderText(null);
+    alert.setContentText(
+            "Attendance already recorded for today."
+    );
+    alert.showAndWait();
 
-        TableColumn<String, String> nameCol =
-                new TableColumn<>("Name");
+    return;
+}
+        String status;
 
-        TableColumn<String, String> statusCol =
-                new TableColumn<>("Status");
+        if(java.time.LocalTime.now()
+                .isAfter(
+                        java.time.LocalTime.of(9,0)
+                )) {
 
-        table.getColumns().addAll(
-                idCol,
-                nameCol,
-                statusCol
+            status = "Late";
+
+        } else {
+
+            status = "Present";
+        }
+
+        Attendance attendance =
+                new Attendance(
+
+                        emp.getId(),
+
+                        emp.getName(),
+
+                        java.time.LocalDate.now(),
+
+                        java.time.LocalTime.now(),
+
+                        null,
+
+                        status
+                );
+
+        attendanceList.add(attendance);
+    });
+
+    checkOutBtn.setOnAction(e -> {
+
+        Attendance selected =
+                attendanceTable
+                        .getSelectionModel()
+                        .getSelectedItem();
+
+        if(selected == null) {
+
+            Alert alert =
+                    new Alert(Alert.AlertType.WARNING);
+
+            alert.setTitle("No Selection");
+            alert.setHeaderText(null);
+            alert.setContentText(
+                    "Select attendance row first."
+            );
+
+            alert.showAndWait();
+
+            return;
+        }
+        if(selected.getCheckOut() != null) {
+
+    Alert alert = new Alert(Alert.AlertType.WARNING);
+    alert.setTitle("Already Checked Out");
+    alert.setHeaderText(null);
+    alert.setContentText(
+            "This employee has already checked out."
+    );
+    alert.showAndWait();
+
+    return;
+}
+
+        selected.setCheckOut(
+                java.time.LocalTime.now()
         );
 
-        root.getChildren().addAll(
-                buttons,
-                table
+        attendanceTable.refresh();
+    });
+
+    absentBtn.setOnAction(e -> {
+
+        Employee emp =
+                employeeCombo.getValue();
+
+        if(emp == null) {
+
+            Alert alert =
+                    new Alert(Alert.AlertType.WARNING);
+
+            alert.setTitle("Select Employee");
+            alert.setHeaderText(null);
+            alert.setContentText(
+                    "Please select an employee."
+            );
+
+            alert.showAndWait();
+
+            return;
+        }
+        boolean alreadyMarked =
+        attendanceList.stream()
+        .anyMatch(a ->
+                a.getEmployeeId() == emp.getId()
+                &&
+                a.getDate().equals(LocalDate.now())
         );
 
-        contentArea.getChildren().setAll(root);
+if(alreadyMarked) {
+
+    Alert alert = new Alert(Alert.AlertType.WARNING);
+    alert.setTitle("Attendance Exists");
+    alert.setHeaderText(null);
+    alert.setContentText(
+            "Attendance already recorded for today."
+    );
+    alert.showAndWait();
+
+    return;
+}
+
+        Attendance attendance =
+                new Attendance(
+
+                        emp.getId(),
+
+                        emp.getName(),
+
+                        java.time.LocalDate.now(),
+
+                        null,
+
+                        null,
+
+                        "Absent"
+                );
+
+        attendanceList.add(attendance);
+    });
+
+    HBox topBar =
+            new HBox(
+                    10,
+                    employeeCombo,
+                    checkInBtn,
+                    checkOutBtn,
+                    absentBtn
+            );
+
+    root.getChildren().addAll(
+            topBar,
+            searchField,
+            attendanceTable
+    );
+
+    contentArea.getChildren().setAll(root);
+}
+@FXML
+private void showReports(ActionEvent event) {
+
+    VBox root = new VBox(15);
+
+    Button empReport =
+            new Button("Employee Report");
+
+    Button attendanceReport =
+            new Button("Attendance Report");
+
+    TextArea preview =
+            new TextArea();
+
+    preview.setPromptText(
+            "Report Preview Area"
+    );
+
+    root.getChildren().addAll(
+            empReport,
+            attendanceReport,
+            preview
+    );
+
+    contentArea.getChildren().setAll(root);
+}
+private double calculateAttendancePercentage(
+        int employeeId) {
+
+    long total =
+            attendanceList.stream()
+                    .filter(a ->
+                            a.getEmployeeId()
+                                    == employeeId)
+                    .count();
+
+    long present =
+            attendanceList.stream()
+                    .filter(a ->
+                            a.getEmployeeId()
+                                    == employeeId)
+
+                    .filter(a ->
+                            a.getStatus()
+                                    .equals("Present")
+
+                                    ||
+
+                                    a.getStatus()
+                                            .equals("Late"))
+                    .count();
+
+    if(total == 0) {
+        return 0;
     }
 
-    @FXML
-    private void showReports(ActionEvent event) {
-
-        VBox root = new VBox(15);
-
-        Button empReport =
-                new Button("Employee Report");
-
-        Button attendanceReport =
-                new Button("Attendance Report");
-
-        TextArea preview =
-                new TextArea();
-
-        preview.setPromptText(
-                "Report Preview Area"
-        );
-
-        root.getChildren().addAll(
-                empReport,
-                attendanceReport,
-                preview
-        );
-
-        contentArea.getChildren().setAll(root);
-    }
+    return ((double) present / total) * 100;
+}
 
     @FXML
     private void logout(ActionEvent event) {
@@ -635,6 +910,7 @@ if (id <= 0) {
                             )
                             .toExternalForm()
             );
+           
 
             stage.setScene(scene);
 
@@ -642,7 +918,35 @@ if (id <= 0) {
             e.printStackTrace();
         }
     }
+private int getPresentCount() {
 
+    return (int) attendanceList.stream()
+            .filter(a ->
+                    a.getDate().equals(LocalDate.now()))
+            .filter(a ->
+                    a.getStatus().equals("Present"))
+            .count();
+}
+
+private int getLateCount() {
+
+    return (int) attendanceList.stream()
+            .filter(a ->
+                    a.getDate().equals(LocalDate.now()))
+            .filter(a ->
+                    a.getStatus().equals("Late"))
+            .count();
+}
+
+private int getAbsentCount() {
+
+    return (int) attendanceList.stream()
+            .filter(a ->
+                    a.getDate().equals(LocalDate.now()))
+            .filter(a ->
+                    a.getStatus().equals("Absent"))
+            .count();
+}
     private VBox createCard(
             String title,
             String value) {
@@ -663,7 +967,6 @@ if (id <= 0) {
                         titleLabel,
                         valueLabel
                 );
-
         card.getStyleClass()
                 .add("dashboard-card");
 
