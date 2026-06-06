@@ -2,9 +2,10 @@ package models;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.io.Serializable;
 
-public class Attendance {
-
+public class Attendance implements Serializable {
+    private static final long serialVersionUID = 1L;
     private int employeeId;
     private String employeeName;
     private LocalDate date;

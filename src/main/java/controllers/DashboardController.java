@@ -26,6 +26,8 @@ import models.Employee;
 import javafx.scene.control.ComboBox;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import utils.EmployeeFileManager;
+import utils.AttendanceFileManager;
 
 public class DashboardController {
 
@@ -36,9 +38,18 @@ public class DashboardController {
 
     @FXML
     private StackPane contentArea;
+@FXML
+public void initialize() {
 
-    @FXML
-    public void initialize() {
+    employees.addAll(
+            EmployeeFileManager.loadEmployees()
+    );
+
+    attendanceList.addAll(
+            AttendanceFileManager.loadAttendance()
+    );
+
+    if (employees.isEmpty()) {
 
         employees.add(new Employee(
                 1,
@@ -64,13 +75,11 @@ public class DashboardController {
                 "01933333333"
         ));
 
-        System.out.println(
-                "Employees Loaded: "
-                        + employees.size()
-        );
-
-        showDashboard(null);
+        EmployeeFileManager.saveEmployees(employees);
     }
+
+    showDashboard(null);
+}
 
    @FXML
 private void showDashboard(ActionEvent event) {
@@ -167,7 +176,7 @@ private void showDashboard(ActionEvent event) {
         FilteredList<Employee> filtered =
         new FilteredList<>(employees, p -> true);
 
-searchField.textProperty().addListener(
+        searchField.textProperty().addListener(
         (obs, oldVal, newVal) -> {
 
             System.out.println(
@@ -333,8 +342,10 @@ if (id <= 0) {
                         phoneField.getText()
                 );
 
-        employees.add(employee);
+       employees.add(employee);
 
+        EmployeeFileManager.saveEmployees(employees);
+        
         idField.clear();
         nameField.clear();
         deptField.clear();
@@ -411,7 +422,8 @@ if (id <= 0) {
     );
 
     employeeTable.refresh();
-        employeeTable.getSelectionModel().clearSelection();
+    EmployeeFileManager.saveEmployees(employees);
+    employeeTable.getSelectionModel().clearSelection();
         idField.clear();
         nameField.clear();
         deptField.clear();
@@ -470,10 +482,11 @@ if (id <= 0) {
         return;
     }
 
-    employees.remove(selected);
+   employees.remove(selected);
 
-    employeeTable.getSelectionModel()
-            .clearSelection();
+        EmployeeFileManager.saveEmployees(employees);
+        employeeTable.getSelectionModel()
+        .clearSelection();
 
     idField.clear();
     nameField.clear();
@@ -701,6 +714,7 @@ if(alreadyMarked) {
                 );
 
         attendanceList.add(attendance);
+        AttendanceFileManager.saveAttendance(attendanceList);
     });
 
     checkOutBtn.setOnAction(e -> {
@@ -803,6 +817,7 @@ if(alreadyMarked) {
                 );
 
         attendanceList.add(attendance);
+        AttendanceFileManager.saveAttendance(attendanceList);
     });
 
     HBox topBar =
@@ -827,18 +842,99 @@ private void showReports(ActionEvent event) {
 
     VBox root = new VBox(15);
 
+    root.setStyle(
+        "-fx-padding: 20;"
+    );
+
     Button empReport =
-            new Button("Employee Report");
+        new Button("Employee Report");
 
     Button attendanceReport =
-            new Button("Attendance Report");
+        new Button("Attendance Report");
 
     TextArea preview =
-            new TextArea();
+        new TextArea();
+
+    preview.setPrefHeight(500);
+    preview.setWrapText(true);
+    preview.setEditable(false);
 
     preview.setPromptText(
-            "Report Preview Area"
-    );
+        "Report Preview Area"
+);
+
+    empReport.setOnAction(e -> {
+
+        StringBuilder report =
+                new StringBuilder();
+
+        report.append(
+                "EMPLOYEE REPORT\n\n"
+        );
+
+        for (Employee emp : employees) {
+
+            report.append(
+                    "ID: "
+                    + emp.getId()
+                    + "\n"
+            );
+
+            report.append(
+                    "Name: "
+                    + emp.getName()
+                    + "\n"
+            );
+
+            report.append(
+                    "Department: "
+                    + emp.getDepartment()
+                    + "\n"
+            );
+
+            report.append(
+                    "Email: "
+                    + emp.getEmail()
+                    + "\n"
+            );
+
+            report.append(
+                    "Phone: "
+                    + emp.getPhone()
+                    + "\n\n"
+            );
+        }
+
+        preview.setText(
+                report.toString()
+        );
+    });
+
+    attendanceReport.setOnAction(e -> {
+
+        StringBuilder report =
+                new StringBuilder();
+
+        report.append(
+                "ATTENDANCE REPORT\n\n"
+        );
+
+        for (Attendance a : attendanceList) {
+
+            report.append(
+                    a.getEmployeeName()
+                    + " | "
+                    + a.getDate()
+                    + " | "
+                    + a.getStatus()
+                    + "\n"
+            );
+        }
+
+        preview.setText(
+                report.toString()
+        );
+    });
 
     root.getChildren().addAll(
             empReport,
