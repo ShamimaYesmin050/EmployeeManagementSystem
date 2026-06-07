@@ -1,0 +1,8 @@
+﻿target/
+*.class
+*.dat
+
+.vscode/
+.idea/
+
+nbproject/private/
